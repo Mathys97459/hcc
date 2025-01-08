@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity, UserRole } from './user.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -26,7 +27,7 @@ export class UserService {
             throw new BadRequestException('Could not fetch user');
         }
     }
-
+    
     async addUser(userData: {
         first_name: string;
         last_name: string;
@@ -35,23 +36,33 @@ export class UserService {
         role: UserRole;
         registration_date: Date;
         is_validated: boolean;
-    }): Promise<UserEntity> {
-        const { email, role } = userData;
-
-        // Vérification si l'email est déjà utilisé
+      }): Promise<UserEntity> {
+        const { email, password, role } = userData;
+    
         const existingUser = await this.userRepository.findOne({ where: { email } });
         if (existingUser) {
-            throw new BadRequestException('Email is already in use');
+          throw new BadRequestException('Email is already in use');
         }
-
-        // Créer et enregistrer le nouvel utilisateur
+    
+        const hashedPassword = await bcrypt.hash(password, 10);
+    
         try {
-            const newUser = this.userRepository.create(userData);
-            return await this.userRepository.save(newUser);
+          const newUser = this.userRepository.create({
+            ...userData,
+            role: UserRole.JOUEUR,
+            password: hashedPassword,
+          });
+          return await this.userRepository.save(newUser);
         } catch (error) {
-            throw new BadRequestException(`Could not add user : ${error.message}`);
+          throw new BadRequestException(`Could not add user : ${error.message}`);
         }
-    }
+      }
+    
+      async findByEmail(email: string): Promise<UserEntity | null> {
+        return this.userRepository.findOne({ where: { email } });
+      }
+
+
 
     async validateUser(id_user: number, role: string): Promise<UserEntity> {
         try {
