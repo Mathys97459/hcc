@@ -23,7 +23,6 @@ export class AuthService {
 
   async login(email: string, password: string): Promise<{ token: string }> {
     const user = await this.userService.findByEmail(email);
-
     if (!user) {
       throw new BadRequestException('Invalid credentials');
     }
@@ -33,7 +32,7 @@ export class AuthService {
       throw new BadRequestException('Invalid credentials');
     }
 
-    const token = this.jwtService.sign({ id: user.id_user, email: user.email,  role: user.role });
+    const token = this.jwtService.sign({ id: user.id_user, email: user.email, role: user.role }, { secret: process.env.JWT_SECRET });
     return { token };
   }
 }
